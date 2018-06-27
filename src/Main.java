@@ -1,15 +1,41 @@
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.objdetect.CascadeClassifier;
 
 public class Main {
 
-    private static final String IMG = System.getProperty("user.dir") + "\\Img\\test.png";
-    private static final String IMGPATH = System.getProperty("user.dir") + "\\Img\\";
+    private static final String IMG = System.getProperty("user.dir") + "\\img\\face.jpg";
+    private static final String IMGPATH = System.getProperty("user.dir") + "\\img\\";
+    private static final String OPENCVPATH = System.getProperty("user.dir") + "\\opencv\\";
 
     public static void main(String[] args) {
-        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+        faceDetector();
+    }
 
+    public static void faceDetector() {
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+        CascadeClassifier classifier = new CascadeClassifier(OPENCVPATH + "lbpcascade_frontalface.xml");
+        Mat img = Imgcodecs.imread(IMG);
+        MatOfRect ofRect = new MatOfRect();
+        classifier.detectMultiScale(img, ofRect);
+
+        System.out.println(ofRect.toArray().length);
+
+        for (Rect rect : ofRect.toArray()) {
+            Imgproc.rectangle(img,
+                    new Point(rect.x, rect.y),
+                    new Point(rect.x + rect.width, rect.y + rect.height),
+                    new Scalar(0, 255, 0));
+        }
+        Imgcodecs.imwrite(IMGPATH + "faceDetect.png", img);
+    }
+
+    /**
+     * 图片校正
+     */
+    public static void imgCorrecting() {
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
         Mat mat = Imgcodecs.imread(IMG);
         Mat grayMat = new Mat();
 
@@ -32,7 +58,7 @@ public class Main {
         Mat lineMat = new Mat();
         Imgproc.HoughLinesP(cannyMat, lineMat, 1, Math.PI/180, 50, 10, 10);
         // 直线端点坐标
-        float sum = 0;
+        float sum = 0, index = 0;
         for (int i = 0; i < lineMat.rows(); i++) {
             double[] vec = lineMat.get(i, 0);
             double x1 = vec[0], y1 = vec[1], x2 = vec[2], y2 = vec[3];
@@ -45,11 +71,15 @@ public class Main {
             double xrad = Math.atan2(y3, x3);
             double angle = xrad / Math.PI * 180;
 
+            // 除去倾斜度为0的
+            if (angle == 0) {
+                index++;
+            }
             sum += angle;
             System.out.println(angle);
         }
 
-        float average = sum / lineMat.rows(); // 对所有角度求平均
+        float average = sum / (lineMat.rows() - index); // 对所有角度求平均
 
         // 逆时针旋转
         Point center = new Point(mat.width() / 2, mat.height() / 2);
