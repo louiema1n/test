@@ -5,7 +5,7 @@ import org.opencv.objdetect.CascadeClassifier;
 
 public class Main {
 
-    private static final String IMG = System.getProperty("user.dir") + "\\img\\face.jpg";
+    private static final String IMG = System.getProperty("user.dir") + "\\img\\img.jpg";
     private static final String IMGPATH = System.getProperty("user.dir") + "\\img\\";
     private static final String OPENCVPATH = System.getProperty("user.dir") + "\\opencv\\";
 
@@ -15,7 +15,7 @@ public class Main {
 
     public static void faceDetector() {
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-        CascadeClassifier classifier = new CascadeClassifier(OPENCVPATH + "lbpcascade_frontalface.xml");
+        CascadeClassifier classifier = new CascadeClassifier(OPENCVPATH + "cascade.xml");
         Mat img = Imgcodecs.imread(IMG);
         MatOfRect ofRect = new MatOfRect();
         classifier.detectMultiScale(img, ofRect);
@@ -28,7 +28,7 @@ public class Main {
                     new Point(rect.x + rect.width, rect.y + rect.height),
                     new Scalar(0, 255, 0));
         }
-        Imgcodecs.imwrite(IMGPATH + "faceDetect.png", img);
+        Imgcodecs.imwrite(IMGPATH + "faceDetect.jpg", img);
     }
 
     /**
