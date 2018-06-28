@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Canvas</title>
+</head>
+<body>
+<div>
+r:<input type="text" id="r"><br>
+c:<input type="text" id="c"><br>
+x:<input type="text" id="x"><br>
+y:<input type="text" id="y"><br>
+w:<input type="text" id="w"><br>
+h:<input type="text" id="h">
+</div>
+<canvas id="draw" width="" height=""></canvas>
+<img src="./img/test.jpg" alt="img" id="img">
+<form name="test">
+    <input type="file" name="file">
+    <button id="clip">裁剪</button>
+    <button id="grey">灰度</button>
+    <button id="area">生成选区</button>
+    <input type="submit" value="提交">
+</form>
+</body>
+<script type="text/javascript">
+    var draw = document.getElementById("draw"),
+        canvas = document.querySelector('canvas'),
+        img = document.querySelector("#img")
+    // 确认浏览器是否支持canvas
+    if (draw.getContext) {
+        var context = draw.getContext('2d')
+        // 绘制红色边框
+        // context.strokeStyle = '#f00'
+        // 内部填充蓝色
+        // context.fillStyle = '#0f0'
+        // context.fillText('Hello canvas', 30, 100)
+
+        canvas.width = img.width
+        canvas.height = img.height
+
+        drawImage()
+
+        var sPoint = {}, ePoint = {}
+
+        // 鼠标按下事件监听
+        canvas.addEventListener('mousedown', function (ev) {
+            if (ev.button === 0) {
+                sPoint.x = ev.offsetX
+                sPoint.y = ev.offsetY
+                sPoint.drag = true
+                drawCover()
+            }
+        })
+
+        // 鼠标移动监听
+        canvas.addEventListener('mousemove', function (ev) {
+            if (ev.button === 0 && sPoint.drag) {
+                var nPoint = {
+                    x: ev.offsetX,
+                    y: ev.offsetY
+                }
+                // clip要通过restore恢复
+                context.save()
+                // 清空阴影
+                context.clearRect(0, 0, canvas.width, canvas.height)
+                // 绘制原图
+                drawImage()
+                // 绘制阴影
+                drawCover()
+                // 开始路径
+                context.beginPath()
+                // 设置路径为选取框
+                context.rect(sPoint.x, sPoint.y, nPoint.x - sPoint.x, nPoint.y - sPoint.y)
+                // 截取路径内为新的作用区域
+                context.clip()
+                // 在选框内绘制原图
+                drawImage()
+                // 恢复clip作用的截取范围
+                context.restore()
+            }
+        })
+
+        // 松开鼠标监听
+        canvas.addEventListener('mouseup', function (ev) {
+            if (ev.button === 0) {
+                sPoint.drag = false
+                ePoint.x = ev.offsetX
+                ePoint.y = ev.offsetY
+            } else if (ev.button === 2) {
+                // 右键重置
+                restore()
+            }
+        })
+
+        // 屏蔽右键菜单
+        canvas.addEventListener('contextmenu', function (e) {
+            e.preventDefault()
+            e.stopPropagation()
+        })
+
+        // 处理裁剪
+        var clip = document.querySelector("#clip")
+        clip.addEventListener('click', function (e) {
+            // 阻止默认事件，禁止触发submit
+            e.preventDefault()
+            if (sPoint.x !== undefined && sPoint.x !== undefined) {
+                // 截取了, 提取选择区域
+                var imgData = context.getImageData(sPoint.x,
+                    sPoint.y,
+                    ePoint.x - sPoint.x,
+                    ePoint.y - sPoint.y)
+                // 清空画布
+                context.clearRect(0, 0, canvas.width, canvas.height)
+                // 重置canvas大小为新图大小
+                canvas.width = Math.abs(ePoint.x - sPoint.x)
+                canvas.height = Math.abs(ePoint.y - sPoint.y)
+                // 把截取的图像放入canvas
+                context.putImageData(imgData, 0, 0)
+                img.src = canvas.toDataURL()
+            } else {
+                // 没有截取
+                alert('请选择裁剪区域')
+            }
+        })
+
+        // 处理灰度
+        var grey = document.querySelector("#grey")
+        grey.addEventListener('click', function (e) {
+            e.preventDefault()
+            // 清空canvas
+            context.clearRect(0, 0, canvas.width, canvas.height)
+            // 绘制原图
+            drawImage()
+            // 获取原图数据
+            var imgData = context.getImageData(0, 0, canvas.width, canvas.height)
+            // 遍历
+            var data = imgData.data
+            for (var i = 0; i < data.length; i += 4) {
+                var red = data[i],
+                    green = data[i + 1],
+                    blue = data[i + 2],
+                    opcity = data[i + 3],   // 透明度
+                    average = (red + green + blue) / 3  // 灰度就是3个颜色的平均值
+                data[i] = data[i + 1] = data[i + 2] = average
+            }
+            // 把处理过的图像放回canvas
+            context.putImageData(imgData, 0, 0, 0, 0, canvas.width, canvas.height)
+            img.src = canvas.toDataURL()
+        })
+
+        // 处理选择区域
+        var area = document.querySelector("#area")
+        area.addEventListener('click', function (e) {
+            e.preventDefault()
+            var r = document.querySelector("#r")
+            var c = document.querySelector("#c")
+            var x = document.querySelector("#x")
+            var y = document.querySelector("#y")
+            var w = document.querySelector("#w")
+            var h = document.querySelector("#h")
+
+            var rInt = parseInt(r.value)
+            var cInt = parseInt(c.value)
+            var xInt = parseInt(x.value)
+            var yInt = parseInt(y.value)
+            var wInt = parseInt(w.value)
+            var hInt = parseInt(h.value)
+
+            // clip要通过restore恢复
+            context.save()
+            // 清空阴影
+            context.clearRect(0, 0, canvas.width, canvas.height)
+            // 绘制原图
+            drawImage()
+            // 绘制阴影
+            drawCover()
+            // 开始路径
+            context.beginPath()
+
+            for (var i = 0; i < rInt; i++) {
+                for (var j = 0; j < cInt; j++) {
+                    // 设置路径为选取框
+                    context.rect(xInt + (wInt + 20) * j , yInt + (hInt + 20) * i, wInt, hInt)
+                }
+            }
+            // 截取路径内为新的作用区域
+            context.clip()
+            // 在选框内绘制原图
+            drawImage()
+            // 恢复clip作用的截取范围
+            context.restore()
+        })
+    }
+
+    // 画原图
+    function drawImage() {
+        var img = new Image()
+        img.src = './img/test.jpg'
+        // 绘制图片
+        context.drawImage(img, 0, 0)
+    }
+
+    /**
+     * 绘制阴影
+     */
+    function drawCover() {
+        context.save()
+        context.fillStyle = 'rgba(0, 0, 0, 0.3)'
+        context.fillRect(0, 0, canvas.width, canvas.height)
+        context.restore()
+    }
+
+    /**
+     * 重置
+     */
+    function restore() {
+        sPoint = {}
+        ePoint = {}
+        drawImage()
+    }
+</script>
+</html>
